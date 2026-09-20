@@ -1,0 +1,49 @@
+name: MoSPI Airfare CPI Engine
+
+on:
+  schedule:
+    - cron: '0 */6 * * *' # Runs at 00:00, 06:00, 12:00, 18:00 UTC daily
+  workflow_dispatch: # Allows manual trigger from the GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  scrape_and_calculate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+          python -m playwright install --with-deps chromium
+          sudo apt-get install -y xvfb
+
+      - name: Run Multi-OTA Scraper (Virtual Framebuffer)
+        run: |
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python main.py
+
+      - name: Execute Automated Data Integrity Tests
+        run: |
+          pytest test_engine.py
+
+      - name: Generate MoSPI CPI Index
+        run: |
+          python core/cpi_calculator.py
+
+      - name: Commit and Push Updated CPI Data
+        run: |
+          git config --global user.name "MoSPI-Bot"
+          git config --global user.email "bot@mospi-apix.internal"
+          git add data/*.csv
+          git commit -m "Automated CPI Matrix Update: $(date -u)" || echo "No data changes to commit"
+          git push
