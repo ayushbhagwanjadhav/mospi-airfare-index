@@ -1,0 +1,5 @@
+Observation_Date,Origin_Destination,Advance_Purchase_Window,Total_Flights_Tracked,Minimum_Fare_INR,Average_Fare_INR,Median_Fare_INR,MoSPI_Base_Fare,Airfare_CPI_Index,Inflation_Percentage
+2026-09-20,DEL-BOM,T+1,135,2026,9710.64,6960.0,9710.64,100.0,0.0
+2026-09-20,MAA-DEL,T+7,66,10150,13705.89,12487.0,13705.89,100.0,0.0
+2026-09-20,MAA-DEL,T+15,71,8864,11033.55,10454.0,11033.55,100.0,0.0
+2026-09-20,MAA-DEL,T+30,71,9150,12114.35,10463.0,12114.35,100.0,0.0
