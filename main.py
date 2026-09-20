@@ -3,7 +3,7 @@ import os
 import random
 import pandas as pd
 from playwright.async_api import async_playwright
-from playwright_stealth import Stealth
+from playwright_stealth import stealth_async
 
 import config
 from adapters import ota_easemytrip
@@ -31,7 +31,7 @@ async def run_pipeline():
         ]
 
         browser = await p.chromium.launch(
-            headless=True, # Xvfb handles the display rendering in Docker
+            headless=False,
             proxy=proxy_config,
             args=launch_args
         )
@@ -52,7 +52,7 @@ async def run_pipeline():
 
                 # EaseMyTrip Pass
                 page_emt = await context.new_page()
-                await Stealth().apply_stealth_async(page_emt)
+                await stealth_async(page_emt)
                 try:
                     records_emt = await ota_easemytrip.scrape_route(page_emt, route["origin"], route["destination"], window_days)
                     if records_emt:
@@ -64,7 +64,7 @@ async def run_pipeline():
 
                 # Google Flights Pass
                 page_goog = await context.new_page()
-                await Stealth().apply_stealth_async(page_goog)
+                await stealth_async(page_goog)
                 try:
                     records_goog = await ota_google.scrape_route(page_goog, route["origin"], route["destination"], window_days)
                     if records_goog:
