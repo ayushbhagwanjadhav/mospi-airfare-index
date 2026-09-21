@@ -19,6 +19,5 @@ CLEANED_DATASET_PATH = os.path.join(DATA_DIR, "cleaned_dataset.csv")
 CPI_REPORT_PATH = os.path.join(DATA_DIR, "mospi_cpi_report.csv")
 
 # Cloud Proxy Configuration
-# Set USE_PROXY=true in production environment variables
-USE_PROXY = os.getenv("USE_PROXY", "false").lower() == "true"
-PROXY_SERVER = os.getenv("PROXY_SERVER", "") # Format: http://user:pass@host:port
+USE_PROXY = True
+PROXY_SERVER = "http://sbhqqwvw:5ozc8y1elhxn@31.59.20.176:6754/"
