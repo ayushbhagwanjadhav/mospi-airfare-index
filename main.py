@@ -16,9 +16,9 @@ def get_proxy_settings():
     return None
 
 async def run_pipeline():
-    print("=" * 70)
-    print("      APIx ENGINE: MASTER CLOUD ORCHESTRATOR (PS 26056)       ")
-    print("=" * 70)
+    print("=" * 70, flush=True)
+    print("      APIx ENGINE: MASTER CLOUD ORCHESTRATOR (PS 26056)       ", flush=True)
+    print("=" * 70, flush=True)
 
     os.makedirs(config.DATA_DIR, exist_ok=True)
     proxy_config = get_proxy_settings()
@@ -31,12 +31,12 @@ async def run_pipeline():
         ]
 
         browser = await p.chromium.launch(
-            headless=False,
+            headless=True,
             proxy=proxy_config,
             args=launch_args
         )
 
-        print(f"[*] Proxy Tunnel: {'Active' if proxy_config else 'Direct Interface'}")
+        print(f"[*] Proxy Tunnel: {'Active' if proxy_config else 'Direct Interface'}", flush=True)
 
         for route in config.ROUTES:
             for window_days in config.T_WINDOWS:
@@ -50,6 +50,12 @@ async def run_pipeline():
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 )
 
+                # --- BANDWIDTH HACK FOR 30-DAY CLOUD RUN ---
+                await context.route("**/*", lambda route: route.abort() 
+                    if route.request.resource_type in ["image", "media", "font", "stylesheet"] 
+                    else route.continue_()
+                )
+
                 # EaseMyTrip Pass
                 page_emt = await context.new_page()
                 await stealth_async(page_emt)
@@ -58,7 +64,7 @@ async def run_pipeline():
                     if records_emt:
                         current_sweep_records.extend(records_emt)
                 except Exception as e:
-                    print(f"   -> [ERROR EMT] {e}")
+                    print(f"   -> [ERROR EMT] {e}", flush=True)
                 finally:
                     await page_emt.close()
 
@@ -70,7 +76,7 @@ async def run_pipeline():
                     if records_goog:
                         current_sweep_records.extend(records_goog)
                 except Exception as e:
-                    print(f"   -> [ERROR Google] {e}")
+                    print(f"   -> [ERROR Google] {e}", flush=True)
                 finally:
                     await page_goog.close()
 
@@ -96,7 +102,7 @@ async def run_pipeline():
                 await asyncio.sleep(jitter)
 
         await browser.close()
-        print("\n[COMPLETE] Multi-OTA sweep finished successfully.")
+        print("\n[COMPLETE] Multi-OTA sweep finished successfully.", flush=True)
 
 if __name__ == "__main__":
     asyncio.run(run_pipeline())
