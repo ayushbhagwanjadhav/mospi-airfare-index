@@ -67,12 +67,19 @@ if df_cpi.empty or df_clean.empty:
     st.warning("Awaiting initial data sweep from GitHub Actions. Dashboard will populate shortly.")
     st.stop()
 
-# --- Auto-Detect Column Names to Prevent KeyErrors ---
+# --- Auto-Detect Column Names ---
 price_cols = [c for c in df_clean.columns if 'price' in c.lower() or 'fare' in c.lower()]
 price_col = price_cols[0] if price_cols else df_clean.columns[-1]
 
 airline_cols = [c for c in df_clean.columns if 'airline' in c.lower() or 'carrier' in c.lower()]
 airline_col = airline_cols[0] if airline_cols else df_clean.columns[0]
+
+# --- FIX: Force String-to-Numeric Conversion ---
+df_clean[price_col] = df_clean[price_col].astype(str).str.replace(r'[^\d.]', '', regex=True).astype(float)
+if 'Airfare_CPI_Index' in df_cpi.columns:
+    df_cpi['Airfare_CPI_Index'] = df_cpi['Airfare_CPI_Index'].astype(str).str.replace(r'[^\d.]', '', regex=True).astype(float)
+if 'Airfare_CPI_Index' in df_timeseries.columns:
+    df_timeseries['Airfare_CPI_Index'] = df_timeseries['Airfare_CPI_Index'].astype(str).str.replace(r'[^\d.]', '', regex=True).astype(float)
 
 # --- Top Level Metrics ---
 col1, col2, col3, col4 = st.columns(4)
