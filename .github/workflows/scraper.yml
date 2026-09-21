@@ -44,6 +44,6 @@ jobs:
         run: |
           git config --global user.name "MoSPI-Bot"
           git config --global user.email "bot@mospi-apix.internal"
-          git add data/*.csv
+          git add.
           git commit -m "Automated CPI Matrix Update: $(date -u)" || echo "No data changes to commit"
           git push
