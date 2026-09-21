@@ -18,12 +18,12 @@ def load_data():
     try:
         df_clean = pd.read_csv(CLEANED_DATA_PATH)
         df_cpi = pd.read_csv(CPI_REPORT_PATH)
-        # Attempt to load timeseries; if it doesn't exist yet, use the current report
+        
         if os.path.exists(CPI_TIMESERIES_PATH):
             df_timeseries = pd.read_csv(CPI_TIMESERIES_PATH)
         else:
             df_timeseries = df_cpi.copy()
-            df_timeseries['Date'] = pd.Timestamp.now().strftime("%Y-%m-%d") # Mock date for Day 1
+            df_timeseries['Date'] = pd.Timestamp.now().strftime("%Y-%m-%d")
             
         return df_clean, df_cpi, df_timeseries
     except Exception as e:
@@ -31,7 +31,7 @@ def load_data():
 
 df_clean, df_cpi, df_timeseries = load_data()
 
-# --- Common Plotly Styling for Video Clarity ---
+# --- Common Plotly Styling ---
 def apply_pro_styling(fig):
     fig.update_layout(
         font=dict(size=14),
@@ -67,12 +67,19 @@ if df_cpi.empty or df_clean.empty:
     st.warning("Awaiting initial data sweep from GitHub Actions. Dashboard will populate shortly.")
     st.stop()
 
+# --- Auto-Detect Column Names to Prevent KeyErrors ---
+price_cols = [c for c in df_clean.columns if 'price' in c.lower() or 'fare' in c.lower()]
+price_col = price_cols[0] if price_cols else df_clean.columns[-1]
+
+airline_cols = [c for c in df_clean.columns if 'airline' in c.lower() or 'carrier' in c.lower()]
+airline_col = airline_cols[0] if airline_cols else df_clean.columns[0]
+
 # --- Top Level Metrics ---
 col1, col2, col3, col4 = st.columns(4)
 overall_cpi = df_cpi['Airfare_CPI_Index'].mean()
 total_quotes = len(df_clean)
 active_routes = df_clean['Origin_Destination'].nunique()
-avg_fare = df_clean['Fare_INR'].mean()
+avg_fare = df_clean[price_col].mean()
 
 col1.metric("National Airfare CPI", f"{overall_cpi:.2f}", f"{(overall_cpi - 100):.2f}% vs Base", delta_color="inverse")
 col2.metric("Market Average Fare", f"₹{avg_fare:,.0f}")
@@ -94,7 +101,6 @@ with tab1:
             fig1 = px.line(ts_grouped, x="Date", y="Airfare_CPI_Index", color="Advance_Purchase_Window",
                            title="Airfare CPI Trend by Advance Purchase Window",
                            markers=True)
-            # Force Y-axis to start near 100 for proper index scaling
             fig1.update_yaxes(range=[95, ts_grouped['Airfare_CPI_Index'].max() + 5])
             st.plotly_chart(apply_pro_styling(fig1), use_container_width=True)
         else:
@@ -102,19 +108,17 @@ with tab1:
 
     with col_b:
         # 2. Advance Purchase Spread (Bar Chart)
-        # Shows how much cheaper it is to book 30 days out vs 1 day out
-        spread_df = df_clean.groupby("Advance_Purchase_Window")["Fare_INR"].mean().reset_index()
-        # Sort categorically
+        spread_df = df_clean.groupby("Advance_Purchase_Window")[price_col].mean().reset_index()
         spread_df['Advance_Purchase_Window'] = pd.Categorical(spread_df['Advance_Purchase_Window'], ["T+1", "T+7", "T+15", "T+30"])
         spread_df = spread_df.sort_values("Advance_Purchase_Window")
         
-        fig2 = px.bar(spread_df, x="Advance_Purchase_Window", y="Fare_INR", 
+        fig2 = px.bar(spread_df, x="Advance_Purchase_Window", y=price_col, 
                       title="Average Market Fare by Booking Window",
                       text_auto='.0f', color="Advance_Purchase_Window")
         st.plotly_chart(apply_pro_styling(fig2), use_container_width=True)
 
     # 3. Airline Market Share
-    fig3 = px.pie(df_clean, names="Airline", title="Active Carrier Inventory Distribution (Market Share)", hole=0.4)
+    fig3 = px.pie(df_clean, names=airline_col, title="Active Carrier Inventory Distribution (Market Share)", hole=0.4)
     fig3.update_traces(textposition='inside', textinfo='percent+label', textfont_size=14)
     st.plotly_chart(apply_pro_styling(fig3), use_container_width=True)
 
