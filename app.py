@@ -67,14 +67,16 @@ if df_cpi.empty or df_clean.empty:
     st.warning("Awaiting initial data sweep from GitHub Actions. Dashboard will populate shortly.")
     st.stop()
 
-# --- Auto-Detect Column Names ---
-price_cols = [c for c in df_clean.columns if 'price' in c.lower() or 'fare' in c.lower()]
-price_col = price_cols[0] if price_cols else df_clean.columns[-1]
+# --- SMARTER AUTO-DETECT TO FIX 'NAN' ---
+# Look for price column, strictly ignoring 'class'
+price_cols = [c for c in df_clean.columns if ('price' in c.lower() or 'fare' in c.lower()) and 'class' not in c.lower()]
+price_col = price_cols[0] if price_cols else df_clean.select_dtypes(include=['number']).columns[-1]
 
+# Look for airline column
 airline_cols = [c for c in df_clean.columns if 'airline' in c.lower() or 'carrier' in c.lower()]
-airline_col = airline_cols[0] if airline_cols else df_clean.columns[0]
+airline_col = airline_cols[0] if airline_cols else [c for c in df_clean.columns if df_clean[c].dtype == 'object'][0]
 
-# --- FIX: Safe Numeric Conversion (Handles Blanks/N/A) ---
+# --- Safe Numeric Conversion ---
 df_clean[price_col] = pd.to_numeric(df_clean[price_col].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
 
 if 'Airfare_CPI_Index' in df_cpi.columns:
@@ -110,7 +112,6 @@ with tab1:
             fig1 = px.line(ts_grouped, x="Date", y="Airfare_CPI_Index", color="Advance_Purchase_Window",
                            title="Airfare CPI Trend by Advance Purchase Window",
                            markers=True)
-            # Safe y-axis range handling in case of NaN
             y_max = ts_grouped['Airfare_CPI_Index'].max()
             if pd.notna(y_max):
                 fig1.update_yaxes(range=[95, y_max + 5])
@@ -130,7 +131,6 @@ with tab1:
         st.plotly_chart(apply_pro_styling(fig2), use_container_width=True)
 
     # 3. Airline Market Share
-    # Dropna to avoid breaking the pie chart with blank airline names
     df_clean_pie = df_clean.dropna(subset=[airline_col, price_col])
     fig3 = px.pie(df_clean_pie, names=airline_col, title="Active Carrier Inventory Distribution (Market Share)", hole=0.4)
     fig3.update_traces(textposition='inside', textinfo='percent+label', textfont_size=14)
