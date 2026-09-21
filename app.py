@@ -74,12 +74,14 @@ price_col = price_cols[0] if price_cols else df_clean.columns[-1]
 airline_cols = [c for c in df_clean.columns if 'airline' in c.lower() or 'carrier' in c.lower()]
 airline_col = airline_cols[0] if airline_cols else df_clean.columns[0]
 
-# --- FIX: Force String-to-Numeric Conversion ---
-df_clean[price_col] = df_clean[price_col].astype(str).str.replace(r'[^\d.]', '', regex=True).astype(float)
+# --- FIX: Safe Numeric Conversion (Handles Blanks/N/A) ---
+df_clean[price_col] = pd.to_numeric(df_clean[price_col].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
+
 if 'Airfare_CPI_Index' in df_cpi.columns:
-    df_cpi['Airfare_CPI_Index'] = df_cpi['Airfare_CPI_Index'].astype(str).str.replace(r'[^\d.]', '', regex=True).astype(float)
+    df_cpi['Airfare_CPI_Index'] = pd.to_numeric(df_cpi['Airfare_CPI_Index'].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
+    
 if 'Airfare_CPI_Index' in df_timeseries.columns:
-    df_timeseries['Airfare_CPI_Index'] = df_timeseries['Airfare_CPI_Index'].astype(str).str.replace(r'[^\d.]', '', regex=True).astype(float)
+    df_timeseries['Airfare_CPI_Index'] = pd.to_numeric(df_timeseries['Airfare_CPI_Index'].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
 
 # --- Top Level Metrics ---
 col1, col2, col3, col4 = st.columns(4)
@@ -108,7 +110,10 @@ with tab1:
             fig1 = px.line(ts_grouped, x="Date", y="Airfare_CPI_Index", color="Advance_Purchase_Window",
                            title="Airfare CPI Trend by Advance Purchase Window",
                            markers=True)
-            fig1.update_yaxes(range=[95, ts_grouped['Airfare_CPI_Index'].max() + 5])
+            # Safe y-axis range handling in case of NaN
+            y_max = ts_grouped['Airfare_CPI_Index'].max()
+            if pd.notna(y_max):
+                fig1.update_yaxes(range=[95, y_max + 5])
             st.plotly_chart(apply_pro_styling(fig1), use_container_width=True)
         else:
             st.info("Time-series data will generate after Day 2 sweeps.")
@@ -125,7 +130,9 @@ with tab1:
         st.plotly_chart(apply_pro_styling(fig2), use_container_width=True)
 
     # 3. Airline Market Share
-    fig3 = px.pie(df_clean, names=airline_col, title="Active Carrier Inventory Distribution (Market Share)", hole=0.4)
+    # Dropna to avoid breaking the pie chart with blank airline names
+    df_clean_pie = df_clean.dropna(subset=[airline_col, price_col])
+    fig3 = px.pie(df_clean_pie, names=airline_col, title="Active Carrier Inventory Distribution (Market Share)", hole=0.4)
     fig3.update_traces(textposition='inside', textinfo='percent+label', textfont_size=14)
     st.plotly_chart(apply_pro_styling(fig3), use_container_width=True)
 
