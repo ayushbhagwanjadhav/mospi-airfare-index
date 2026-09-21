@@ -120,14 +120,17 @@ with tab1:
             st.info("Time-series data will generate after Day 2 sweeps.")
 
     with col_b:
-        # 2. Advance Purchase Spread (Bar Chart)
+        # 2. Lead-Time Elasticity Curve (Directly addresses PS 26056 requirement)
         spread_df = df_clean.groupby("Advance_Purchase_Window")[price_col].mean().reset_index()
         spread_df['Advance_Purchase_Window'] = pd.Categorical(spread_df['Advance_Purchase_Window'], ["T+1", "T+7", "T+15", "T+30"])
         spread_df = spread_df.sort_values("Advance_Purchase_Window")
         
-        fig2 = px.bar(spread_df, x="Advance_Purchase_Window", y=price_col, 
-                      title="Average Market Fare by Booking Window",
-                      text_auto='.0f', color="Advance_Purchase_Window")
+        fig2 = px.line(spread_df, x="Advance_Purchase_Window", y=price_col, 
+                      title="Lead-Time Price Elasticity Curve",
+                      markers=True)
+        
+        # Force a distinct color (teal) so it doesn't clash with the airline pie chart below
+        fig2.update_traces(line_color="#00C4B4", marker=dict(size=10, color="white", line=dict(width=2, color="#00C4B4")))
         st.plotly_chart(apply_pro_styling(fig2), use_container_width=True)
 
     # 3. Airline Market Share
