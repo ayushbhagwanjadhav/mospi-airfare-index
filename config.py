@@ -18,6 +18,6 @@ MASTER_DATASET_PATH = os.path.join(DATA_DIR, "master_dataset.csv")
 CLEANED_DATASET_PATH = os.path.join(DATA_DIR, "cleaned_dataset.csv")
 CPI_REPORT_PATH = os.path.join(DATA_DIR, "mospi_cpi_report.csv")
 
-# Cloud Proxy Configuration
-USE_PROXY = True
-PROXY_SERVER = "http://sbhqqwvw:5ozc8y1elhxn@31.59.20.176:6754/"
+# Proxy Settings (Disabled)
+USE_PROXY = False
+PROXY_SERVER = ""
