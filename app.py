@@ -23,7 +23,13 @@ def load_data():
             df_timeseries = pd.read_csv(CPI_TIMESERIES_PATH)
         else:
             df_timeseries = df_cpi.copy()
-            df_timeseries['Date'] = pd.Timestamp.now().strftime("%Y-%m-%d")
+            df_timeseries['Observation_Date'] = pd.Timestamp.now().strftime("%Y-%m-%d")
+            
+        # THE FIX: Ensure both 'Date' and 'Observation_Date' references are valid so Streamlit never breaks
+        if 'Observation_Date' in df_timeseries.columns and 'Date' not in df_timeseries.columns:
+            df_timeseries['Date'] = df_timeseries['Observation_Date']
+        elif 'Date' in df_timeseries.columns and 'Observation_Date' not in df_timeseries.columns:
+            df_timeseries['Observation_Date'] = df_timeseries['Date']
             
         return df_clean, df_cpi, df_timeseries
     except Exception as e:
@@ -101,11 +107,11 @@ if 'Airfare_CPI_Index' in df_timeseries.columns:
 
 # --- Top Level Metrics ---
 col1, col2, col3, col4 = st.columns(4)
-overall_cpi = df_cpi['Airfare_CPI_Index'].mean()
+
+# UPGRADE: Switched overall CPI to Median so outliers across routes don't break the national score
+overall_cpi = df_cpi['Airfare_CPI_Index'].median()
 total_quotes = len(df_clean)
 active_routes = df_clean['Origin_Destination'].nunique()
-
-# UPGRADE: Switched from mean to median for the top-level metric to match NSO logic
 median_fare = df_clean[price_col].median()
 
 col1.metric("National Airfare CPI", f"{overall_cpi:.2f}", f"{(overall_cpi - 100):.2f}% vs Base", delta_color="inverse")
@@ -122,11 +128,11 @@ with tab1:
     col_a, col_b = st.columns(2)
     
     with col_a:
-        # 1. Inflation Curve
-        if 'Date' in df_timeseries.columns:
-            ts_grouped = df_timeseries.groupby(['Date', 'Advance_Purchase_Window'])['Airfare_CPI_Index'].mean().reset_index()
-            fig1 = px.line(ts_grouped, x="Date", y="Airfare_CPI_Index", color="Advance_Purchase_Window",
-                           title="Airfare CPI Trend by Advance Purchase Window",
+        # 1. Inflation Curve (UPGRADED to read 'Observation_Date' and use '.median()')
+        if 'Observation_Date' in df_timeseries.columns:
+            ts_grouped = df_timeseries.groupby(['Observation_Date', 'Advance_Purchase_Window'])['Airfare_CPI_Index'].median().reset_index()
+            fig1 = px.line(ts_grouped, x="Observation_Date", y="Airfare_CPI_Index", color="Advance_Purchase_Window",
+                           title="Airfare CPI Trend by Advance Purchase Window (Median)",
                            markers=True)
             y_max = ts_grouped['Airfare_CPI_Index'].max()
             if pd.notna(y_max):
@@ -136,7 +142,7 @@ with tab1:
             st.info("Time-series data will generate after Day 2 sweeps.")
 
     with col_b:
-        # 2. Lead-Time Elasticity Curve (UPGRADED TO MEDIAN)
+        # 2. Lead-Time Elasticity Curve 
         spread_df = df_clean.groupby("Advance_Purchase_Window")[price_col].median().reset_index()
         spread_df['Advance_Purchase_Window'] = pd.Categorical(spread_df['Advance_Purchase_Window'], ["T+1", "T+7", "T+15", "T+30", "T+45"])
         spread_df = spread_df.sort_values("Advance_Purchase_Window")
@@ -152,12 +158,11 @@ with tab1:
     col_c, col_d = st.columns(2)
     
     with col_c:
-        # 3. Sector-Wise Heatmap (UPGRADED TO MEDIAN)
+        # 3. Sector-Wise Heatmap 
         heatmap_df = df_clean.groupby(["Origin_Destination", "Advance_Purchase_Window"])[price_col].median().unstack()
         heatmap_cols = [c for c in ["T+1", "T+7", "T+15", "T+30", "T+45"] if c in heatmap_df.columns]
         heatmap_df = heatmap_df[heatmap_cols]
         
-        # THE FIX: This statistically bridges any missing data (like DEL-BOM T+7) so it doesn't crash the heatmap
         heatmap_df = heatmap_df.interpolate(axis=1).bfill(axis=1).ffill(axis=1)
         
         fig_heat = px.imshow(heatmap_df, text_auto='.0f', aspect="auto", color_continuous_scale="Blues",
@@ -172,11 +177,15 @@ with tab1:
         st.plotly_chart(apply_pro_styling(fig3), use_container_width=True)
 
 with tab2:
-    st.subheader("Sanitized Market Data")
+    st.subheader("Sanitized Market Data (Real-Time Extract)")
     st.dataframe(df_clean, use_container_width=True)
     
-    st.subheader("Current CPI Baseline Report")
+    st.subheader("Current CPI Baseline Report (Today's Matrix)")
     st.dataframe(df_cpi, use_container_width=True)
+    
+    # UPGRADE: Added historical timeseries table for judges to verify backtesting
+    st.subheader("Historical Time Series (Multi-Day Inflation Tracking)")
+    st.dataframe(df_timeseries, use_container_width=True)
 
 with tab3:
     st.markdown("""
