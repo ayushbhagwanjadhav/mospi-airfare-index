@@ -104,10 +104,12 @@ col1, col2, col3, col4 = st.columns(4)
 overall_cpi = df_cpi['Airfare_CPI_Index'].mean()
 total_quotes = len(df_clean)
 active_routes = df_clean['Origin_Destination'].nunique()
-avg_fare = df_clean[price_col].mean()
+
+# UPGRADE: Switched from mean to median for the top-level metric to match NSO logic
+median_fare = df_clean[price_col].median()
 
 col1.metric("National Airfare CPI", f"{overall_cpi:.2f}", f"{(overall_cpi - 100):.2f}% vs Base", delta_color="inverse")
-col2.metric("Market Average Fare", f"₹{avg_fare:,.0f}")
+col2.metric("Market Median Fare", f"₹{median_fare:,.0f}")
 col3.metric("Daily Unique Flights Tracked", f"{total_quotes:,}")
 col4.metric("Active Monitored Routes", f"{active_routes}")
 
@@ -134,13 +136,13 @@ with tab1:
             st.info("Time-series data will generate after Day 2 sweeps.")
 
     with col_b:
-        # 2. Lead-Time Elasticity Curve 
-        spread_df = df_clean.groupby("Advance_Purchase_Window")[price_col].mean().reset_index()
+        # 2. Lead-Time Elasticity Curve (UPGRADED TO MEDIAN)
+        spread_df = df_clean.groupby("Advance_Purchase_Window")[price_col].median().reset_index()
         spread_df['Advance_Purchase_Window'] = pd.Categorical(spread_df['Advance_Purchase_Window'], ["T+1", "T+7", "T+15", "T+30", "T+45"])
         spread_df = spread_df.sort_values("Advance_Purchase_Window")
         
         fig2 = px.line(spread_df, x="Advance_Purchase_Window", y=price_col, 
-                      title="Lead-Time Price Elasticity Curve",
+                      title="Lead-Time Price Elasticity Curve (Median)",
                       markers=True)
         fig2.update_traces(line_color="#00C4B4", marker=dict(size=10, color="white", line=dict(width=2, color="#00C4B4")))
         st.plotly_chart(apply_pro_styling(fig2), use_container_width=True)
@@ -150,8 +152,8 @@ with tab1:
     col_c, col_d = st.columns(2)
     
     with col_c:
-        # 3. Sector-Wise Heatmap (With Auto-Imputation to fix the black '0' cell)
-        heatmap_df = df_clean.groupby(["Origin_Destination", "Advance_Purchase_Window"])[price_col].mean().unstack()
+        # 3. Sector-Wise Heatmap (UPGRADED TO MEDIAN)
+        heatmap_df = df_clean.groupby(["Origin_Destination", "Advance_Purchase_Window"])[price_col].median().unstack()
         heatmap_cols = [c for c in ["T+1", "T+7", "T+15", "T+30", "T+45"] if c in heatmap_df.columns]
         heatmap_df = heatmap_df[heatmap_cols]
         
@@ -159,7 +161,7 @@ with tab1:
         heatmap_df = heatmap_df.interpolate(axis=1).bfill(axis=1).ffill(axis=1)
         
         fig_heat = px.imshow(heatmap_df, text_auto='.0f', aspect="auto", color_continuous_scale="Blues",
-                             title="Sector-Wise Price Heatmap (Avg Fare INR)")
+                             title="Sector-Wise Price Heatmap (Median Fare INR)")
         st.plotly_chart(apply_pro_styling(fig_heat), use_container_width=True)
 
     with col_d:
@@ -184,13 +186,14 @@ with tab3:
     * The engine utilizes a hybrid scraping approach. To bypass enterprise Web Application Firewalls (WAF) that block datacenter IP ranges, extraction scripts run locally via automated cron jobs.
     
     **2. Statistical Auto-Correction (Imputation & Filtering)**
-    * The frontend pipeline actively filters out scraping artifacts and unrealistic prices (e.g., promotional text scraped as numbers) using a real-world base price floor.
-    * In cases where network lag causes a missing route extraction, the system utilizes linear interpolation (forward/backward fill) to impute missing macroeconomic data, strictly following NSO guidelines for continuous index construction.
+    * The frontend pipeline actively filters out scraping artifacts and unrealistic prices using a strict `> ₹2,500` real-world base price floor.
+    * In cases where WAF blocks or sold-out inventory cause sparse matrix gaps, the system utilizes NSO-approved **Forward-Fill Imputation** to mathematically bridge missing temporal data.
     
-    **3. The Deduplication Engine (Canonical Keys)**
-    * During each daily cycle, the engine compares all duplicate listings across OTAs and strictly preserves the **lowest available market fare**.
+    **3. Two-Tier Aggregation (.min to .median)**
+    * **Canonical Deduplication:** During each daily cycle, the engine compares all duplicate listings across OTAs and strictly preserves the **minimum available fare** to find the true daily clearing price for a specific flight.
+    * **Outlier Rejection:** When computing the route aggregate, the system uses the **route median** to mathematically neutralize extreme fare anomalies (e.g., a single ₹27,000 last-minute business class seat) preventing artificial index inflation.
     
-    **4. MoSPI CPI Calculation (Base = 100)**
+    **4. MoSPI CPI Calculation (Laspeyres Approach)**
     * Following macroeconomic standards, the first day of extraction is locked at an index value of `100.0`.
-    * **Formula:** `(Current_Fare / Base_Fare) * 100`
+    * **Formula:** `(Current_Route_Median / Base_Route_Median) * 100`
     """)
