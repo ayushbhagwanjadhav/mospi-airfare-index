@@ -36,18 +36,12 @@ def load_data():
 
 df_clean, df_cpi, df_timeseries = load_data()
 
-# --- Enterprise Plotly Styling & Mobile Lock ---
+# --- Plotly Styling & Mobile Lock (NATIVE THEME) ---
 def apply_pro_styling(fig):
     fig.update_layout(
-        template="plotly_white",
         dragmode=False,  # Locks chart to prevent accidental mobile panning
-        font=dict(family="Inter, sans-serif", size=13, color="#1E293B"),
-        title=dict(font=dict(size=16, color="#0F172A"), pad=dict(b=15)),
-        xaxis=dict(title_font=dict(size=13), tickfont=dict(size=12), showgrid=True, gridcolor="#F1F5F9"),
-        yaxis=dict(title_font=dict(size=13), tickfont=dict(size=12), showgrid=True, gridcolor="#F1F5F9"),
-        legend=dict(font=dict(size=12), orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title=None),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
+        font=dict(family="Inter, sans-serif"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title=None),
         margin=dict(t=50, b=40, l=40, r=40)
     )
     return fig
@@ -62,16 +56,12 @@ CHART_CONFIG = {
 
 # --- Sidebar UI ---
 with st.sidebar:
-    st.markdown(
-        '<div style="background-color: #F8FAFC; padding: 15px; border-radius: 8px; border: 1px solid #E2E8F0; margin-bottom: 20px;">'
-        '<img src="https://upload.wikimedia.org/wikipedia/commons/8/84/Government_of_India_logo.svg" width="70" style="margin-bottom: 10px;">'
-        '<h4 style="color: #0F172A; margin: 0;">APIx Engine</h4>'
-        '<p style="color: #64748B; font-size: 12px; margin: 0;">Govt. PS-26056</p>'
-        '</div>', unsafe_allow_html=True
-    )
+    st.image("https://upload.wikimedia.org/wikipedia/commons/8/84/Government_of_India_logo.svg", width=70)
+    st.markdown("### APIx Engine")
+    st.caption("Govt. PS-26056")
+    st.markdown("---")
     
     st.markdown("### System Status")
-    st.markdown("---")
     st.markdown("**Data Pipeline:** Online")
     st.markdown("**Sync Schedule:** 6-Hour Batch")
     st.markdown("**Deduplication:** Active")
@@ -86,9 +76,9 @@ with st.sidebar:
             use_container_width=True
         )
 
-# --- Main Dashboard Header ---
-st.markdown("<h2 style='color: #0F172A; margin-bottom: 0px;'>National Airfare Price Index (CPI)</h2>", unsafe_allow_html=True)
-st.markdown("<p style='color: #475569; font-size: 16px; margin-bottom: 30px;'>Automated Macroeconomic Tracking & Inflation Engine for MoSPI</p>", unsafe_allow_html=True)
+# --- Main Dashboard Header (Native Text) ---
+st.title("National Airfare Price Index (CPI)")
+st.markdown("##### Automated Macroeconomic Tracking & Inflation Engine for MoSPI")
 
 if df_cpi.empty or df_clean.empty:
     st.info("System initializing. Awaiting primary data ingestion sweep.")
@@ -109,6 +99,7 @@ if 'Airfare_CPI_Index' in df_timeseries.columns:
     df_timeseries['Airfare_CPI_Index'] = pd.to_numeric(df_timeseries['Airfare_CPI_Index'].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
 
 # --- Top Level Metrics ---
+st.markdown("<br>", unsafe_allow_html=True)
 col1, col2, col3, col4 = st.columns(4)
 overall_cpi = df_cpi['Airfare_CPI_Index'].median()
 total_quotes = len(df_clean)
@@ -119,8 +110,7 @@ col1.metric("National Airfare CPI", f"{overall_cpi:.2f}", f"{(overall_cpi - 100)
 col2.metric("Market Median Fare", f"₹{median_fare:,.0f}")
 col3.metric("Daily Market Quotes", f"{total_quotes:,}")
 col4.metric("Active Monitored Routes", f"{active_routes}")
-
-st.markdown("<hr style='border: 1px solid #E2E8F0; margin-top: 10px; margin-bottom: 30px;'>", unsafe_allow_html=True)
+st.markdown("---")
 
 # --- Tabs ---
 tab1, tab2, tab3 = st.tabs(["Macroeconomic Dashboard", "Raw Data Explorer", "Engine Methodology"])
@@ -132,12 +122,12 @@ with tab1:
         if 'Observation_Date' in df_timeseries.columns:
             ts_grouped = df_timeseries.groupby(['Observation_Date', 'Advance_Purchase_Window'])['Airfare_CPI_Index'].median().reset_index()
             fig1 = px.line(ts_grouped, x="Observation_Date", y="Airfare_CPI_Index", color="Advance_Purchase_Window",
-                           title="Airfare CPI Trend by Advance Purchase Window (Median)", markers=True,
-                           color_discrete_sequence=px.colors.qualitative.Prism)
+                           title="Airfare CPI Trend by Advance Purchase Window (Median)", markers=True)
             y_max = ts_grouped['Airfare_CPI_Index'].max()
             if pd.notna(y_max):
                 fig1.update_yaxes(range=[95, y_max + 5])
-            st.plotly_chart(apply_pro_styling(fig1), use_container_width=True, config=CHART_CONFIG)
+            # Added theme="streamlit" to explicitly sync with dark/light mode
+            st.plotly_chart(apply_pro_styling(fig1), use_container_width=True, config=CHART_CONFIG, theme="streamlit")
         else:
             st.info("Historical time-series data will populate post-initialization.")
 
@@ -148,9 +138,9 @@ with tab1:
         
         fig2 = px.line(spread_df, x="Advance_Purchase_Window", y=price_col, 
                       title="Lead-Time Price Elasticity Curve (Median)", markers=True)
-        fig2.update_traces(line_color="#1E3A8A", marker=dict(size=8, color="white", line=dict(width=2, color="#1E3A8A")))
-        st.plotly_chart(apply_pro_styling(fig2), use_container_width=True, config=CHART_CONFIG)
+        st.plotly_chart(apply_pro_styling(fig2), use_container_width=True, config=CHART_CONFIG, theme="streamlit")
 
+    st.markdown("<br>", unsafe_allow_html=True)
     col_c, col_d = st.columns(2)
     
     with col_c:
@@ -161,14 +151,13 @@ with tab1:
         
         fig_heat = px.imshow(heatmap_df, text_auto='.0f', aspect="auto", color_continuous_scale="Blues",
                              title="Sector-Wise Price Matrix (Median Fare INR)")
-        st.plotly_chart(apply_pro_styling(fig_heat), use_container_width=True, config=CHART_CONFIG)
+        st.plotly_chart(apply_pro_styling(fig_heat), use_container_width=True, config=CHART_CONFIG, theme="streamlit")
 
     with col_d:
         df_clean_pie = df_clean.dropna(subset=[airline_col, price_col])
-        fig3 = px.pie(df_clean_pie, names=airline_col, title="Active Carrier Inventory Distribution", hole=0.4,
-                      color_discrete_sequence=px.colors.qualitative.Safe)
-        fig3.update_traces(textposition='inside', textinfo='percent+label', textfont_size=12, marker=dict(line=dict(color='#FFFFFF', width=2)))
-        st.plotly_chart(apply_pro_styling(fig3), use_container_width=True, config=CHART_CONFIG)
+        fig3 = px.pie(df_clean_pie, names=airline_col, title="Active Carrier Inventory Distribution", hole=0.4)
+        fig3.update_traces(textposition='inside', textinfo='percent+label', textfont_size=12)
+        st.plotly_chart(apply_pro_styling(fig3), use_container_width=True, config=CHART_CONFIG, theme="streamlit")
 
 with tab2:
     st.markdown("#### Sanitized Market Data (Real-Time Extract)")
