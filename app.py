@@ -40,14 +40,14 @@ df_clean, df_cpi, df_timeseries = load_data()
 # --- Common Plotly Styling ---
 def apply_pro_styling(fig):
     fig.update_layout(
-        font=dict(size=14),
-        title=dict(font=dict(size=22)),
-        xaxis=dict(title_font=dict(size=16), tickfont=dict(size=14)),
-        yaxis=dict(title_font=dict(size=16), tickfont=dict(size=14)),
-        legend=dict(font=dict(size=14, color="white"), title_font=dict(size=14)),
+        font=dict(family="Inter, sans-serif", size=17),
+        title=dict(font=dict(size=23)),
+        xaxis=dict(title_font=dict(size=19), tickfont=dict(size=17)),
+        yaxis=dict(title_font=dict(size=19), tickfont=dict(size=17)),
+        legend=dict(font=dict(size=16, color="white"), title_font=dict(size=16)),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
-        margin=dict(t=50, b=50, l=50, r=50)
+        margin=dict(t=60, b=50, l=60, r=40)
     )
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(128,128,128,0.2)')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(128,128,128,0.2)')
