@@ -16,6 +16,12 @@ def generate_mospi_index(clean_data_path="data/cleaned_dataset.csv",
     df = pd.read_csv(clean_data_path)
     print(f"[*] Loaded {len(df)} sanitized flight quotes across all observation dates.")
 
+    # --- THE FIX: MACROECONOMIC PRICE FLOOR ---
+    df['Total_Fare_INR'] = pd.to_numeric(df['Total_Fare_INR'], errors='coerce')
+    df = df[df['Total_Fare_INR'] > 2500]
+    print(f"[*] Applied macroeconomic price floor (> ₹2500). Processing {len(df)} valid quotes.")
+    # ------------------------------------------
+
     # 1. Group by Observation Date, Route, and Window
     metrics = df.groupby(['Observation_Date', 'Origin_Destination', 'Advance_Purchase_Window']).agg(
         Total_Flights_Tracked=('Canonical_Flight_Key', 'count'),
