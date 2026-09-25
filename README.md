@@ -1,4 +1,4 @@
-# National Airfare Price Index (APIx) Engine
+# National Airfare Price Index Engine (SkyCPI)
 
 An automated, high-frequency macroeconomic data pipeline and index calculation engine engineered for the Ministry of Statistics and Programme Implementation (MoSPI) and the Reserve Bank of India (RBI). 
 
